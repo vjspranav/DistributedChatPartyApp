@@ -3,6 +3,7 @@ const app = express();
 const http = require("http");
 const server = http.createServer(app);
 const { Server } = require("socket.io");
+const { isObject } = require("util");
 const io = new Server(server);
 
 app.get("/", (req, res) => {
@@ -27,11 +28,11 @@ io.on("connection", (socket) => {
   socket.on("video playing", (time) => {
     socket.broadcast.emit("video playing", time, socket.user);
   });
-  socket.on("video paused", (video) => {
+  socket.on("video paused", () => {
     socket.broadcast.emit("video paused", socket.user);
   });
-  socket.on("video ended", (video) => {
-    socket.broadcast.emit("video ended", video, socket.user);
+  socket.on("video ended", () => {
+    socket.broadcast.emit("video ended", socket.user);
   });
 });
 
