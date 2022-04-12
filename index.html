@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font: 13px Helvetica, Arial;
+      }
+      form {
+        background: #000;
+        padding: 3px;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+      }
+      form input {
+        border: 0;
+        padding: 10px;
+        width: 90%;
+        margin-right: 0.5%;
+      }
+      form button {
+        width: 9%;
+        background: rgb(130, 224, 255);
+        border: none;
+        padding: 10px;
+      }
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      #messages li {
+        padding: 5px 10px;
+      }
+      #messages li:nth-child(odd) {
+        background: #eee;
+      }
+
+      /*  Css for video-container, chat-container */
+      .video-container {
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%;
+      }
+      .video-container iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .chat-container {
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 56.25%;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Create a UI for video and chat -->
+    <!-- Left side should have iframe with border -->
+    <!-- Right side should have collapsible chat box -->
+    <div style="display: flex; flex-direction: column">
+      <div id="player"></div>
+      <div id="chat-container">
+        <div id="chat-header">
+          <h1>Chat</h1>
+          <button id="chat-collapse-button">Collapse</button>
+        </div>
+        <div id="chat-body">
+          <ul id="messages"></ul>
+        </div>
+        <div id="chat-footer">
+          <form id="form" action="">
+            <input id="input" placeholder="Type a message..." /><button>
+              Send
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+      var socket = io();
+
+      // Assign name to user
+      var name = prompt("What's your name?");
+      socket.emit("setUser", name);
+
+      var messages = document.getElementById("messages");
+      var form = document.getElementById("form");
+      var input = document.getElementById("input");
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (input.value) {
+          var item = document.createElement("li");
+          item.style.background = "green";
+          item.textContent = "me : " + input.value;
+          messages.appendChild(item);
+          window.scrollTo(0, document.body.scrollHeight);
+          socket.emit("chat message", input.value);
+          input.value = "";
+        }
+      });
+
+      socket.on("chat message", function (msg, username) {
+        var item = document.createElement("li");
+        item.style.background = "red";
+        item.textContent = username + ": " + msg;
+        console.log(msg);
+        console.log(username);
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+
+      // For video
+      var player;
+      let curState = "";
+      let curTime = 0;
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player("player", {
+          height: "390",
+          width: "640",
+          videoId: "dQw4w9WgXcQ",
+          playerVars: {
+            playsinline: 1,
+          },
+          events: {
+            onReady: onPlayerReady,
+            onStateChange: onPlayerStateChange,
+          },
+        });
+      }
+
+      function onPlayerReady(event) {
+        event.target.playVideo();
+      }
+
+      function onPlayerStateChange(event) {
+        // If playing console.log("playing");
+        // If paused console.log("paused");
+        // If ended console.log("ended");
+        curTime = event.target.getCurrentTime();
+        if (event.data == YT.PlayerState.PLAYING) {
+          // emit current time
+          if (curState != "playing") {
+            curState = "playing";
+            socket.emit("video playing", curTime);
+          }
+        } else if (event.data == YT.PlayerState.PAUSED) {
+          curState = "paused";
+          socket.emit("video paused");
+        } else if (event.data == YT.PlayerState.ENDED) {
+          curState = "ended";
+          socket.emit("video ended");
+        }
+        // if (event.data == YT.PlayerState.PLAYING && !done) {
+        //   setTimeout(stopVideo, 6000);
+        //   done = true;
+        // }
+      }
+      function stopVideo() {
+        player.stopVideo();
+      }
+
+      // Listen for video playing, video paused, video ended
+      socket.on("video playing", function (time, username) {
+        console.log("Video Started by: " + username + " at " + time);
+        // If absolute difference between current time and time received is less than 5 seconds
+        // then play video
+        if (Math.abs(curTime - time) > 5) {
+          player.seekTo(time);
+        }
+        if (curState != "playing") {
+          player.playVideo();
+        }
+      });
+      socket.on("video paused", function (username) {
+        console.log("Video Paused by: " + username);
+        player.pauseVideo();
+      });
+      socket.on("video ended", function (username) {
+        console.log("Video Ended by: " + username);
+        player.stopVideo();
+      });
+    </script>
+  </body>
+</html>
