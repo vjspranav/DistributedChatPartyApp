@@ -187,10 +187,12 @@
       });
       socket.on("video paused", function (username) {
         console.log("Video Paused by: " + username);
+        curState = "paused";
         player.pauseVideo();
       });
       socket.on("video ended", function (username) {
         console.log("Video Ended by: " + username);
+        curState = "ended";
         player.stopVideo();
       });
     </script>
